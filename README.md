@@ -27,7 +27,7 @@
 
 ## 🌐 Live URL
 
-* **Frontend Live URL:** `https://your-fixmate-client-url.vercel.app` *(replace with your live deployment URL; local default: `http://localhost:3000`)*
+* **Frontend Live URL:**  *(replace with your live deployment URL; local default: `http://localhost:3000`)*
 
 ---
 

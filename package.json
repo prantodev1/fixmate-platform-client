@@ -1,0 +1,29 @@
+{
+  "name": "fixmate-platform-client",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "eslint"
+  },
+  "dependencies": {
+    "@react-oauth/google": "^0.13.5",
+    "better-auth": "^1.7.25",
+    "lucide-react": "^1.74.0",
+    "mongodb": "^7.9.0",
+    "next": "16.4.6",
+    "node": "^27.0.0-alpha.0.1.1",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "sonner": "^2.0.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/turbopack": "4.3.3",
+    "babel-plugin-react-compiler": "1.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.4.6",
+    "tailwindcss": "4.3.3"
+  }
+}
