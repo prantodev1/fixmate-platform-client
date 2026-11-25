@@ -609,7 +609,6 @@ export default function CustomerMyBookingsPage() {
 
     const id = paymentBooking._id || paymentBooking.id;
     const method = payment?.method || "card";
-    const isMobilePayment = method === "bkash" || method === "nagad";
     const amount = Number(
       paymentBooking.paidAmount ||
         paymentBooking.finalAmount ||
@@ -641,11 +640,6 @@ export default function CustomerMyBookingsPage() {
           cardLast4: payment?.last4 || "",
           cardHolder: payment?.holder || "",
           cardExpiry: payment?.expiry || "",
-        });
-      } else if (isMobilePayment) {
-        Object.assign(payload, {
-          mobileNumber: payment?.mobileNumber || "",
-          transactionId: payment?.transactionId || "",
         });
       }
 
@@ -685,15 +679,9 @@ export default function CustomerMyBookingsPage() {
               method === "card"
                 ? updatedBooking.cardLast4 || payment?.last4 || ""
                 : item.cardLast4 || "",
-            mobileNumber: isMobilePayment
-              ? updatedBooking.mobileNumber || payment?.mobileNumber || ""
-              : item.mobileNumber || "",
             paidAmount: updatedBooking.paidAmount ?? amount,
             transactionId:
-              updatedBooking.transactionId ||
-              (isMobilePayment ? payment?.transactionId : "") ||
-              item.transactionId ||
-              "",
+              updatedBooking.transactionId || item.transactionId || "",
             paidAt: paidAtIso,
             statusHistory:
               Array.isArray(updatedBooking.statusHistory) &&

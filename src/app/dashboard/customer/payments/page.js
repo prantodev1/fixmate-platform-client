@@ -8,7 +8,6 @@ import {
   ArrowRight,
   Banknote,
   Receipt,
-  Smartphone,
 } from "lucide-react";
 import { DashboardPageSkeleton } from "@/components/ui/LoadingState";
 
@@ -70,16 +69,6 @@ function getMethodInfo(booking) {
     };
   }
 
-  if (method === "bkash" || method === "nagad") {
-    const label = method === "bkash" ? "bKash" : "Nagad";
-    const mobile = String(booking?.mobileNumber || "").replace(/\D/g, "");
-    const suffix = mobile.length >= 4 ? mobile.slice(-4) : "";
-    return {
-      kind: "mobile",
-      label: suffix ? `${label} •••• ${suffix}` : label,
-    };
-  }
-
   if (method === "cod" || method === "cash") {
     return { kind: "cash", label: "Cash on delivery" };
   }
@@ -88,11 +77,6 @@ function getMethodInfo(booking) {
 }
 
 function MethodIcon({ kind }) {
-  if (kind === "mobile") {
-    return (
-      <Smartphone className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400 shrink-0" />
-    );
-  }
   if (kind === "cash") {
     return (
       <Banknote className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />

@@ -5,11 +5,9 @@ import {
   AlertCircle,
   Banknote,
   CheckCircle2,
-  Copy,
   CreditCard,
   Lock,
   ShieldCheck,
-  Smartphone,
   X,
 } from "lucide-react";
 import { FixMateSpinner } from "@/components/ui/LoadingState";
@@ -23,20 +21,6 @@ const BRAND_LABELS = {
 };
 
 const PAYMENT_METHODS = [
-  {
-    id: "bkash",
-    label: "bKash",
-    hint: "Mobile banking",
-    icon: Smartphone,
-    iconClass: "text-pink-600 dark:text-pink-400",
-  },
-  {
-    id: "nagad",
-    label: "Nagad",
-    hint: "Mobile banking",
-    icon: Smartphone,
-    iconClass: "text-orange-600 dark:text-orange-400",
-  },
   {
     id: "card",
     label: "Card",
@@ -52,23 +36,6 @@ const PAYMENT_METHODS = [
     iconClass: "text-emerald-600 dark:text-emerald-400",
   },
 ];
-
-const MOBILE_METHODS = {
-  bkash: {
-    label: "bKash",
-    merchantNumber: (
-      process.env.NEXT_PUBLIC_BKASH_MERCHANT_NUMBER || ""
-    ).trim(),
-    appHint: 'Open bKash and choose "Send Money".',
-  },
-  nagad: {
-    label: "Nagad",
-    merchantNumber: (
-      process.env.NEXT_PUBLIC_NAGAD_MERCHANT_NUMBER || ""
-    ).trim(),
-    appHint: 'Open Nagad and choose "Send Money".',
-  },
-};
 
 function onlyDigits(value) {
   return String(value || "").replace(/\D/g, "");
@@ -128,26 +95,6 @@ function validateExpiry(value) {
   return "";
 }
 
-function validateMobileNumber(value) {
-  const digits = onlyDigits(value);
-  if (!digits) return "Enter the mobile number you paid from.";
-  if (!/^01\d{9}$/.test(digits)) {
-    return "Enter a valid 11-digit mobile number (e.g. 01712345678).";
-  }
-  return "";
-}
-
-function validateTransactionId(value) {
-  const clean = String(value || "")
-    .trim()
-    .toUpperCase();
-  if (!clean) return "Enter the transaction ID from your payment SMS.";
-  if (!/^[A-Z0-9]{6,20}$/.test(clean)) {
-    return "Transaction ID should be 6–20 letters or digits.";
-  }
-  return "";
-}
-
 function formatAmount(value) {
   const num = Number(value);
   return Number.isNaN(num) ? "0.00" : num.toFixed(2);
@@ -161,30 +108,22 @@ export default function PaymentModal({
   onClose,
   onPay,
 }) {
-  const [method, setMethod] = useState("bkash");
+  const [method, setMethod] = useState("card");
   const [cardNumber, setCardNumber] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvc, setCvc] = useState("");
   const [holder, setHolder] = useState("");
-  const [mobileNumber, setMobileNumber] = useState("");
-  const [transactionId, setTransactionId] = useState("");
   const [errors, setErrors] = useState({});
-  const [copyLabel, setCopyLabel] = useState("Copy");
 
   const numberRef = useRef(null);
   const expiryRef = useRef(null);
   const cvcRef = useRef(null);
   const holderRef = useRef(null);
-  const mobileRef = useRef(null);
-  const transactionRef = useRef(null);
-  const copyTimerRef = useRef(null);
 
   const digits = onlyDigits(cardNumber);
   const brand = useMemo(() => detectCardBrand(digits), [digits]);
   const cvcLength = brand === "amex" ? 4 : 3;
   const displayAmount = formatAmount(amount);
-  const mobileMethod = MOBILE_METHODS[method] || null;
-  const isMobileMethod = Boolean(mobileMethod);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -202,33 +141,10 @@ export default function PaymentModal({
     };
   }, [loading, method, onClose]);
 
-  useEffect(
-    () => () => {
-      if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
-    },
-    []
-  );
-
   const selectMethod = (nextMethod) => {
     if (loading) return;
     setMethod(nextMethod);
     setErrors({});
-    setCopyLabel("Copy");
-  };
-
-  const handleCopyMerchant = async () => {
-    const number = mobileMethod?.merchantNumber || "";
-    if (!number) return;
-
-    try {
-      await navigator.clipboard.writeText(number);
-      setCopyLabel("Copied");
-    } catch {
-      setCopyLabel("Copy failed");
-    }
-
-    if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
-    copyTimerRef.current = window.setTimeout(() => setCopyLabel("Copy"), 1800);
   };
 
   const handleSubmit = (event) => {
@@ -238,33 +154,6 @@ export default function PaymentModal({
     if (method === "cod") {
       setErrors({});
       onPay?.({ method: "cod" });
-      return;
-    }
-
-    if (isMobileMethod) {
-      const nextErrors = {};
-      const mobileError = validateMobileNumber(mobileNumber);
-      const transactionError = validateTransactionId(transactionId);
-
-      if (mobileError) nextErrors.mobileNumber = mobileError;
-      if (transactionError) nextErrors.transactionId = transactionError;
-
-      setErrors(nextErrors);
-
-      if (nextErrors.mobileNumber) {
-        mobileRef.current?.focus();
-        return;
-      }
-      if (nextErrors.transactionId) {
-        transactionRef.current?.focus();
-        return;
-      }
-
-      onPay?.({
-        method,
-        mobileNumber: onlyDigits(mobileNumber),
-        transactionId: String(transactionId).trim().toUpperCase(),
-      });
       return;
     }
 
@@ -328,11 +217,7 @@ export default function PaymentModal({
     }`;
 
   const submitLabel =
-    method === "cod"
-      ? "Confirm cash payment"
-      : isMobileMethod
-      ? `Confirm ${mobileMethod.label} payment`
-      : `Pay $${displayAmount}`;
+    method === "cod" ? "Confirm cash payment" : `Pay $${displayAmount}`;
 
   return (
     <div
@@ -435,112 +320,6 @@ export default function PaymentModal({
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          {isMobileMethod && (
-            <div className="space-y-4">
-              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-3 space-y-2">
-                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  {`Send money to this ${mobileMethod.label} merchant number`}
-                </p>
-                {mobileMethod.merchantNumber ? (
-                  <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2">
-                    <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">
-                      {mobileMethod.merchantNumber}
-                    </span>
-                    <button
-                      type="button"
-                      disabled={loading}
-                      onClick={handleCopyMerchant}
-                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-sky-700 dark:text-sky-300 hover:text-sky-800 dark:hover:text-sky-200 transition cursor-pointer disabled:opacity-50"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                      {copyLabel}
-                    </button>
-                  </div>
-                ) : (
-                  <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
-                    Merchant number is not configured yet. Please contact
-                    support before sending money.
-                  </p>
-                )}
-                <ol className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 space-y-0.5 list-decimal list-inside">
-                  <li>{mobileMethod.appHint}</li>
-                  <li>{`Send exactly $${displayAmount} to the number above.`}</li>
-                  <li>Enter the TrxID from your confirmation SMS below.</li>
-                </ol>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="payment-mobile-number"
-                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
-                >
-                  Mobile number you paid from
-                </label>
-                <input
-                  id="payment-mobile-number"
-                  ref={mobileRef}
-                  type="tel"
-                  inputMode="numeric"
-                  autoComplete="tel"
-                  value={mobileNumber}
-                  onChange={(event) => {
-                    setMobileNumber(onlyDigits(event.target.value).slice(0, 11));
-                    if (errors.mobileNumber) {
-                      setErrors((prev) => ({ ...prev, mobileNumber: "" }));
-                    }
-                  }}
-                  placeholder="01XXXXXXXXX"
-                  className={inputClass("mobileNumber")}
-                />
-                {errors.mobileNumber && (
-                  <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
-                    {errors.mobileNumber}
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label
-                  htmlFor="payment-transaction-id"
-                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
-                >
-                  Transaction ID (TrxID)
-                </label>
-                <input
-                  id="payment-transaction-id"
-                  ref={transactionRef}
-                  type="text"
-                  value={transactionId}
-                  onChange={(event) => {
-                    setTransactionId(
-                      event.target.value
-                        .toUpperCase()
-                        .replace(/[^A-Z0-9]/g, "")
-                        .slice(0, 20)
-                    );
-                    if (errors.transactionId) {
-                      setErrors((prev) => ({ ...prev, transactionId: "" }));
-                    }
-                  }}
-                  placeholder="e.g. 9F7A2C1B"
-                  className={`${inputClass("transactionId")} font-mono uppercase`}
-                />
-                {errors.transactionId && (
-                  <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
-                    {errors.transactionId}
-                  </p>
-                )}
-              </div>
-
-              <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-                <Lock className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-                <span>
-                  {`Your ${mobileMethod.label} transaction ID is saved with the booking as proof of payment.`}
-                </span>
-              </p>
-            </div>
-          )}
-
           {method === "card" && (
             <>
               <div>

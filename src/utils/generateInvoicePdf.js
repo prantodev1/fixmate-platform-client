@@ -127,21 +127,8 @@ export function downloadPaidJobInvoice(booking) {
   const cardLabel = cardLast4
     ? `${cardBrand || "Card"} •••• ${cardLast4}`
     : "";
-  const mobileLabel =
-    paymentMethod === "bkash"
-      ? "bKash"
-      : paymentMethod === "nagad"
-      ? "Nagad"
-      : "";
-  const mobileNumber = String(booking.mobileNumber || "").replace(/\D/g, "");
-  const mobilePaymentLabel = mobileLabel
-    ? mobileNumber.length >= 4
-      ? `${mobileLabel} •••• ${mobileNumber.slice(-4)}`
-      : mobileLabel
-    : "";
   const paymentMethodLabel =
     cardLabel ||
-    mobilePaymentLabel ||
     (paymentMethod === "cod" || paymentMethod === "cash"
       ? "Cash on delivery"
       : "");
