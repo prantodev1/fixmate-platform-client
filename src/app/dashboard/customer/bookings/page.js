@@ -22,7 +22,7 @@ import {
   FixMateSpinner,
 } from "@/components/ui/LoadingState";
 import ConfirmModal from "@/components/ui/ConfirmModal";
-import CardPaymentModal from "@/components/payments/CardPaymentModal";
+import PaymentModal from "@/components/payments/PaymentModal";
 import { downloadPaidJobInvoice } from "@/utils/generateInvoicePdf";
 
 const TIMELINE_STEPS = [
@@ -1132,9 +1132,9 @@ export default function CustomerMyBookingsPage() {
         </div>
       )}
 
-      {/* Card Payment Modal */}
+      {/* Payment Modal */}
       {paymentBooking && (
-        <CardPaymentModal
+        <PaymentModal
           key={paymentBooking._id || paymentBooking.id}
           booking={paymentBooking}
           amount={
