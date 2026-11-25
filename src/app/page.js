@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { PublicPageSkeleton } from "@/components/ui/LoadingState";
 import HomeHeroSection from "@/components/home/HomeHeroSection";
@@ -246,9 +248,7 @@ function extractReviewsFromServices(servicesList) {
 }
 
 export default function HomePage() {
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
 
   const [selectedCategory, setSelectedCategory] = useState("");
   const [allServices, setAllServices] = useState([]);

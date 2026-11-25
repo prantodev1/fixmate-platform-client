@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useState } from "react";
 import { AlertCircle, CheckCircle2, Send } from "lucide-react";
 import { toast } from "sonner";
@@ -27,9 +29,7 @@ export default function ContactMessageFormSection({
   const [submitting, setSubmitting] = useState(false);
   const [feedback, setFeedback] = useState(null);
 
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
 
   const handleChange = (e) => {
     const { name, value } = e.target;

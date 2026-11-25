@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -172,9 +174,7 @@ export default function BrowseServicesSection({
 }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
 
   const urlQuery = syncWithUrl
     ? searchParams.get("search") || searchParams.get("q") || ""
