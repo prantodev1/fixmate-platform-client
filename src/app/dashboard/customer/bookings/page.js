@@ -685,9 +685,15 @@ export default function CustomerMyBookingsPage() {
               method === "card"
                 ? updatedBooking.cardLast4 || payment?.last4 || ""
                 : item.cardLast4 || "",
+            mobileNumber: isMobilePayment
+              ? updatedBooking.mobileNumber || payment?.mobileNumber || ""
+              : item.mobileNumber || "",
             paidAmount: updatedBooking.paidAmount ?? amount,
             transactionId:
-              updatedBooking.transactionId || item.transactionId || "",
+              updatedBooking.transactionId ||
+              (isMobilePayment ? payment?.transactionId : "") ||
+              item.transactionId ||
+              "",
             paidAt: paidAtIso,
             statusHistory:
               Array.isArray(updatedBooking.statusHistory) &&
