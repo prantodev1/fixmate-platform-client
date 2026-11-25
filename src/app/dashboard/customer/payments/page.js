@@ -103,13 +103,6 @@ function MethodIcon({ kind }) {
   );
 }
 
-function getCardLabel(booking) {
-  const brand = String(booking?.cardBrand || "").trim();
-  const last4 = String(booking?.cardLast4 || "").trim();
-  if (!last4) return "";
-  return `${brand || "Card"} •••• ${last4}`;
-}
-
 function readStoredUser() {
   if (typeof window === "undefined") return null;
   try {
@@ -378,6 +371,7 @@ export default function CustomerPaymentHistoryPage() {
             {payments.map((item) => {
               const id = item._id || item.id;
               const techName = resolveTechnicianName(item, userLookup);
+              const methodInfo = getMethodInfo(item);
               return (
                 <div
                   key={id}
@@ -391,10 +385,10 @@ export default function CustomerPaymentHistoryPage() {
                       <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
                         {techName}
                       </p>
-                      {getCardLabel(item) && (
+                      {methodInfo.label && (
                         <p className="inline-flex items-center gap-1.5 text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">
-                          <CreditCard className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-                          {getCardLabel(item)}
+                          <MethodIcon kind={methodInfo.kind} />
+                          {methodInfo.label}
                         </p>
                       )}
                     </div>
@@ -405,7 +399,7 @@ export default function CustomerPaymentHistoryPage() {
 
                   <div className="pt-2.5 border-t border-slate-200 dark:border-slate-800/80 flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                     <span className="inline-flex items-center gap-1.5 font-mono text-slate-500 dark:text-slate-400 truncate">
-                      <CreditCard className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+                      <Receipt className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
                       {getTransactionId(item)}
                     </span>
                     <span className="text-slate-700 dark:text-slate-300 shrink-0">
