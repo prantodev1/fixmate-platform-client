@@ -3,10 +3,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
   AlertCircle,
+  Banknote,
   CheckCircle2,
+  Copy,
   CreditCard,
   Lock,
   ShieldCheck,
+  Smartphone,
   X,
 } from "lucide-react";
 import { FixMateSpinner } from "@/components/ui/LoadingState";
@@ -17,6 +20,54 @@ const BRAND_LABELS = {
   amex: "Amex",
   discover: "Discover",
   unknown: "Card",
+};
+
+const PAYMENT_METHODS = [
+  {
+    id: "bkash",
+    label: "bKash",
+    hint: "Mobile banking",
+    icon: Smartphone,
+    iconClass: "text-pink-600 dark:text-pink-400",
+  },
+  {
+    id: "nagad",
+    label: "Nagad",
+    hint: "Mobile banking",
+    icon: Smartphone,
+    iconClass: "text-orange-600 dark:text-orange-400",
+  },
+  {
+    id: "card",
+    label: "Card",
+    hint: "Visa, Mastercard",
+    icon: CreditCard,
+    iconClass: "text-sky-600 dark:text-sky-400",
+  },
+  {
+    id: "cod",
+    label: "Cash",
+    hint: "Pay on delivery",
+    icon: Banknote,
+    iconClass: "text-emerald-600 dark:text-emerald-400",
+  },
+];
+
+const MOBILE_METHODS = {
+  bkash: {
+    label: "bKash",
+    merchantNumber: (
+      process.env.NEXT_PUBLIC_BKASH_MERCHANT_NUMBER || ""
+    ).trim(),
+    appHint: 'Open bKash and choose "Send Money".',
+  },
+  nagad: {
+    label: "Nagad",
+    merchantNumber: (
+      process.env.NEXT_PUBLIC_NAGAD_MERCHANT_NUMBER || ""
+    ).trim(),
+    appHint: 'Open Nagad and choose "Send Money".',
+  },
 };
 
 function onlyDigits(value) {
@@ -77,6 +128,26 @@ function validateExpiry(value) {
   return "";
 }
 
+function validateMobileNumber(value) {
+  const digits = onlyDigits(value);
+  if (!digits) return "Enter the mobile number you paid from.";
+  if (!/^01\d{9}$/.test(digits)) {
+    return "Enter a valid 11-digit mobile number (e.g. 01712345678).";
+  }
+  return "";
+}
+
+function validateTransactionId(value) {
+  const clean = String(value || "")
+    .trim()
+    .toUpperCase();
+  if (!clean) return "Enter the transaction ID from your payment SMS.";
+  if (!/^[A-Z0-9]{6,20}$/.test(clean)) {
+    return "Transaction ID should be 6–20 letters or digits.";
+  }
+  return "";
+}
+
 function formatAmount(value) {
   const num = Number(value);
   return Number.isNaN(num) ? "0.00" : num.toFixed(2);
@@ -90,24 +161,35 @@ export default function PaymentModal({
   onClose,
   onPay,
 }) {
+  const [method, setMethod] = useState("bkash");
   const [cardNumber, setCardNumber] = useState("");
   const [expiry, setExpiry] = useState("");
   const [cvc, setCvc] = useState("");
   const [holder, setHolder] = useState("");
+  const [mobileNumber, setMobileNumber] = useState("");
+  const [transactionId, setTransactionId] = useState("");
   const [errors, setErrors] = useState({});
+  const [copyLabel, setCopyLabel] = useState("Copy");
 
   const numberRef = useRef(null);
   const expiryRef = useRef(null);
   const cvcRef = useRef(null);
   const holderRef = useRef(null);
+  const mobileRef = useRef(null);
+  const transactionRef = useRef(null);
+  const copyTimerRef = useRef(null);
 
   const digits = onlyDigits(cardNumber);
   const brand = useMemo(() => detectCardBrand(digits), [digits]);
   const cvcLength = brand === "amex" ? 4 : 3;
   const displayAmount = formatAmount(amount);
+  const mobileMethod = MOBILE_METHODS[method] || null;
+  const isMobileMethod = Boolean(mobileMethod);
 
   useEffect(() => {
-    const timer = window.setTimeout(() => numberRef.current?.focus(), 60);
+    const timer = window.setTimeout(() => {
+      if (method === "card") numberRef.current?.focus();
+    }, 60);
 
     const handleKeyDown = (event) => {
       if (event.key === "Escape" && !loading) onClose?.();
@@ -118,11 +200,73 @@ export default function PaymentModal({
       window.clearTimeout(timer);
       window.removeEventListener("keydown", handleKeyDown);
     };
-  }, [loading, onClose]);
+  }, [loading, method, onClose]);
+
+  useEffect(
+    () => () => {
+      if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
+    },
+    []
+  );
+
+  const selectMethod = (nextMethod) => {
+    if (loading) return;
+    setMethod(nextMethod);
+    setErrors({});
+    setCopyLabel("Copy");
+  };
+
+  const handleCopyMerchant = async () => {
+    const number = mobileMethod?.merchantNumber || "";
+    if (!number) return;
+
+    try {
+      await navigator.clipboard.writeText(number);
+      setCopyLabel("Copied");
+    } catch {
+      setCopyLabel("Copy failed");
+    }
+
+    if (copyTimerRef.current) window.clearTimeout(copyTimerRef.current);
+    copyTimerRef.current = window.setTimeout(() => setCopyLabel("Copy"), 1800);
+  };
 
   const handleSubmit = (event) => {
     event.preventDefault();
     if (loading) return;
+
+    if (method === "cod") {
+      setErrors({});
+      onPay?.({ method: "cod" });
+      return;
+    }
+
+    if (isMobileMethod) {
+      const nextErrors = {};
+      const mobileError = validateMobileNumber(mobileNumber);
+      const transactionError = validateTransactionId(transactionId);
+
+      if (mobileError) nextErrors.mobileNumber = mobileError;
+      if (transactionError) nextErrors.transactionId = transactionError;
+
+      setErrors(nextErrors);
+
+      if (nextErrors.mobileNumber) {
+        mobileRef.current?.focus();
+        return;
+      }
+      if (nextErrors.transactionId) {
+        transactionRef.current?.focus();
+        return;
+      }
+
+      onPay?.({
+        method,
+        mobileNumber: onlyDigits(mobileNumber),
+        transactionId: String(transactionId).trim().toUpperCase(),
+      });
+      return;
+    }
 
     const nextErrors = {};
     const trimmedHolder = holder.trim();
@@ -168,6 +312,7 @@ export default function PaymentModal({
     }
 
     onPay?.({
+      method: "card",
       brand: BRAND_LABELS[brand],
       last4: digits.slice(-4),
       holder: trimmedHolder,
@@ -181,6 +326,13 @@ export default function PaymentModal({
         ? "border-rose-500 focus:border-rose-500"
         : "border-slate-300 dark:border-slate-800 focus:border-sky-500"
     }`;
+
+  const submitLabel =
+    method === "cod"
+      ? "Confirm cash payment"
+      : isMobileMethod
+      ? `Confirm ${mobileMethod.label} payment`
+      : `Pay $${displayAmount}`;
 
   return (
     <div
@@ -240,141 +392,305 @@ export default function PaymentModal({
           </div>
         )}
 
-        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
-          <div>
-            <label
-              htmlFor="card-number"
-              className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
-            >
-              Card number
-            </label>
-            <div className="relative">
-              <input
-                id="card-number"
-                ref={numberRef}
-                type="text"
-                inputMode="numeric"
-                autoComplete="cc-number"
-                value={cardNumber}
-                onChange={(event) => {
-                  setCardNumber(formatCardNumber(event.target.value));
-                  if (errors.cardNumber) {
-                    setErrors((prev) => ({ ...prev, cardNumber: "" }));
-                  }
-                }}
-                placeholder="4242 4242 4242 4242"
-                className={`${inputClass("cardNumber")} pr-24`}
-              />
-              <span className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
-                <CreditCard className="w-4 h-4" />
-                {BRAND_LABELS[brand]}
-              </span>
-            </div>
-            {errors.cardNumber && (
-              <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
-                {errors.cardNumber}
-              </p>
-            )}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label
-                htmlFor="card-expiry"
-                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
-              >
-                Expiry date
-              </label>
-              <input
-                id="card-expiry"
-                ref={expiryRef}
-                type="text"
-                inputMode="numeric"
-                autoComplete="cc-exp"
-                value={expiry}
-                onChange={(event) => {
-                  setExpiry(formatExpiry(event.target.value));
-                  if (errors.expiry) {
-                    setErrors((prev) => ({ ...prev, expiry: "" }));
-                  }
-                }}
-                placeholder="MM/YY"
-                className={inputClass("expiry")}
-              />
-              {errors.expiry && (
-                <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
-                  {errors.expiry}
-                </p>
-              )}
-            </div>
-
-            <div>
-              <label
-                htmlFor="card-cvc"
-                className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
-              >
-                {`CVC (${cvcLength} digits)`}
-              </label>
-              <input
-                id="card-cvc"
-                ref={cvcRef}
-                type="password"
-                inputMode="numeric"
-                autoComplete="cc-csc"
-                value={cvc}
-                onChange={(event) => {
-                  setCvc(onlyDigits(event.target.value).slice(0, cvcLength));
-                  if (errors.cvc) {
-                    setErrors((prev) => ({ ...prev, cvc: "" }));
-                  }
-                }}
-                placeholder={brand === "amex" ? "1234" : "123"}
-                className={inputClass("cvc")}
-              />
-              {errors.cvc && (
-                <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
-                  {errors.cvc}
-                </p>
-              )}
-            </div>
-          </div>
-
-          <div>
-            <label
-              htmlFor="card-holder"
-              className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
-            >
-              Name on card
-            </label>
-            <input
-              id="card-holder"
-              ref={holderRef}
-              type="text"
-              autoComplete="cc-name"
-              value={holder}
-              onChange={(event) => {
-                setHolder(event.target.value);
-                if (errors.holder) {
-                  setErrors((prev) => ({ ...prev, holder: "" }));
-                }
-              }}
-              placeholder="Full name as printed on the card"
-              className={inputClass("holder")}
-            />
-            {errors.holder && (
-              <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
-                {errors.holder}
-              </p>
-            )}
-          </div>
-
-          <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
-            <Lock className="w-3.5 h-3.5 shrink-0 mt-0.5" />
-            <span>
-              Card details are validated on this device. Only the card brand and
-              last 4 digits are saved with your payment record.
-            </span>
+        <div>
+          <p className="text-xs font-semibold text-slate-700 dark:text-slate-300 mb-2">
+            Payment method
           </p>
+          <div
+            role="group"
+            aria-label="Payment method"
+            className="grid grid-cols-2 gap-2"
+          >
+            {PAYMENT_METHODS.map((option) => {
+              const Icon = option.icon;
+              const selected = method === option.id;
+              return (
+                <button
+                  key={option.id}
+                  type="button"
+                  disabled={loading}
+                  aria-pressed={selected}
+                  onClick={() => selectMethod(option.id)}
+                  className={`flex items-center gap-2.5 rounded-2xl border p-3 text-left transition cursor-pointer disabled:opacity-60 ${
+                    selected
+                      ? "border-sky-500 bg-sky-500/10 ring-1 ring-sky-500/40"
+                      : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 hover:border-slate-300 dark:hover:border-slate-700"
+                  }`}
+                >
+                  <span className="w-9 h-9 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 flex items-center justify-center shrink-0">
+                    <Icon className={`w-4 h-4 ${option.iconClass}`} />
+                  </span>
+                  <span className="min-w-0">
+                    <span className="block text-sm font-bold text-slate-900 dark:text-white leading-tight">
+                      {option.label}
+                    </span>
+                    <span className="block text-[11px] text-slate-500 dark:text-slate-400 leading-tight mt-0.5">
+                      {option.hint}
+                    </span>
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
+          {isMobileMethod && (
+            <div className="space-y-4">
+              <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950 px-4 py-3 space-y-2">
+                <p className="text-[11px] font-semibold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                  {`Send money to this ${mobileMethod.label} merchant number`}
+                </p>
+                {mobileMethod.merchantNumber ? (
+                  <div className="flex items-center justify-between gap-2 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-3 py-2">
+                    <span className="font-mono text-sm font-bold text-slate-900 dark:text-white">
+                      {mobileMethod.merchantNumber}
+                    </span>
+                    <button
+                      type="button"
+                      disabled={loading}
+                      onClick={handleCopyMerchant}
+                      className="inline-flex items-center gap-1.5 text-[11px] font-semibold text-sky-700 dark:text-sky-300 hover:text-sky-800 dark:hover:text-sky-200 transition cursor-pointer disabled:opacity-50"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      {copyLabel}
+                    </button>
+                  </div>
+                ) : (
+                  <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">
+                    Merchant number is not configured yet. Please contact
+                    support before sending money.
+                  </p>
+                )}
+                <ol className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 space-y-0.5 list-decimal list-inside">
+                  <li>{mobileMethod.appHint}</li>
+                  <li>{`Send exactly $${displayAmount} to the number above.`}</li>
+                  <li>Enter the TrxID from your confirmation SMS below.</li>
+                </ol>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="payment-mobile-number"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                >
+                  Mobile number you paid from
+                </label>
+                <input
+                  id="payment-mobile-number"
+                  ref={mobileRef}
+                  type="tel"
+                  inputMode="numeric"
+                  autoComplete="tel"
+                  value={mobileNumber}
+                  onChange={(event) => {
+                    setMobileNumber(onlyDigits(event.target.value).slice(0, 11));
+                    if (errors.mobileNumber) {
+                      setErrors((prev) => ({ ...prev, mobileNumber: "" }));
+                    }
+                  }}
+                  placeholder="01XXXXXXXXX"
+                  className={inputClass("mobileNumber")}
+                />
+                {errors.mobileNumber && (
+                  <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
+                    {errors.mobileNumber}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label
+                  htmlFor="payment-transaction-id"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                >
+                  Transaction ID (TrxID)
+                </label>
+                <input
+                  id="payment-transaction-id"
+                  ref={transactionRef}
+                  type="text"
+                  value={transactionId}
+                  onChange={(event) => {
+                    setTransactionId(
+                      event.target.value
+                        .toUpperCase()
+                        .replace(/[^A-Z0-9]/g, "")
+                        .slice(0, 20)
+                    );
+                    if (errors.transactionId) {
+                      setErrors((prev) => ({ ...prev, transactionId: "" }));
+                    }
+                  }}
+                  placeholder="e.g. 9F7A2C1B"
+                  className={`${inputClass("transactionId")} font-mono uppercase`}
+                />
+                {errors.transactionId && (
+                  <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
+                    {errors.transactionId}
+                  </p>
+                )}
+              </div>
+
+              <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                <Lock className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>
+                  {`Your ${mobileMethod.label} transaction ID is saved with the booking as proof of payment.`}
+                </span>
+              </p>
+            </div>
+          )}
+
+          {method === "card" && (
+            <>
+              <div>
+                <label
+                  htmlFor="card-number"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                >
+                  Card number
+                </label>
+                <div className="relative">
+                  <input
+                    id="card-number"
+                    ref={numberRef}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="cc-number"
+                    value={cardNumber}
+                    onChange={(event) => {
+                      setCardNumber(formatCardNumber(event.target.value));
+                      if (errors.cardNumber) {
+                        setErrors((prev) => ({ ...prev, cardNumber: "" }));
+                      }
+                    }}
+                    placeholder="4242 4242 4242 4242"
+                    className={`${inputClass("cardNumber")} pr-24`}
+                  />
+                  <span className="absolute right-3 top-1/2 -translate-y-1/2 inline-flex items-center gap-1.5 text-[11px] font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
+                    <CreditCard className="w-4 h-4" />
+                    {BRAND_LABELS[brand]}
+                  </span>
+                </div>
+                {errors.cardNumber && (
+                  <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
+                    {errors.cardNumber}
+                  </p>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label
+                    htmlFor="card-expiry"
+                    className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                  >
+                    Expiry date
+                  </label>
+                  <input
+                    id="card-expiry"
+                    ref={expiryRef}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="cc-exp"
+                    value={expiry}
+                    onChange={(event) => {
+                      setExpiry(formatExpiry(event.target.value));
+                      if (errors.expiry) {
+                        setErrors((prev) => ({ ...prev, expiry: "" }));
+                      }
+                    }}
+                    placeholder="MM/YY"
+                    className={inputClass("expiry")}
+                  />
+                  {errors.expiry && (
+                    <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
+                      {errors.expiry}
+                    </p>
+                  )}
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="card-cvc"
+                    className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                  >
+                    {`CVC (${cvcLength} digits)`}
+                  </label>
+                  <input
+                    id="card-cvc"
+                    ref={cvcRef}
+                    type="password"
+                    inputMode="numeric"
+                    autoComplete="cc-csc"
+                    value={cvc}
+                    onChange={(event) => {
+                      setCvc(onlyDigits(event.target.value).slice(0, cvcLength));
+                      if (errors.cvc) {
+                        setErrors((prev) => ({ ...prev, cvc: "" }));
+                      }
+                    }}
+                    placeholder={brand === "amex" ? "1234" : "123"}
+                    className={inputClass("cvc")}
+                  />
+                  {errors.cvc && (
+                    <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
+                      {errors.cvc}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label
+                  htmlFor="card-holder"
+                  className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1.5"
+                >
+                  Name on card
+                </label>
+                <input
+                  id="card-holder"
+                  ref={holderRef}
+                  type="text"
+                  autoComplete="cc-name"
+                  value={holder}
+                  onChange={(event) => {
+                    setHolder(event.target.value);
+                    if (errors.holder) {
+                      setErrors((prev) => ({ ...prev, holder: "" }));
+                    }
+                  }}
+                  placeholder="Full name as printed on the card"
+                  className={inputClass("holder")}
+                />
+                {errors.holder && (
+                  <p className="mt-1.5 text-xs text-rose-600 dark:text-rose-400">
+                    {errors.holder}
+                  </p>
+                )}
+              </div>
+
+              <p className="flex items-start gap-1.5 text-[11px] leading-relaxed text-slate-500 dark:text-slate-400">
+                <Lock className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                <span>
+                  Card details are validated on this device. Only the card brand
+                  and last 4 digits are saved with your payment record.
+                </span>
+              </p>
+            </>
+          )}
+
+          {method === "cod" && (
+            <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 space-y-1.5">
+              <p className="flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300">
+                <Banknote className="w-4 h-4" />
+                Pay the technician in cash
+              </p>
+              <p className="text-[11px] leading-relaxed text-emerald-700/90 dark:text-emerald-300/90">
+                {`Confirm only after you have received your repaired device and paid $${displayAmount} in cash. This records the booking as paid.`}
+              </p>
+            </div>
+          )}
 
           <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-200 dark:border-slate-800">
             <button
@@ -398,7 +714,7 @@ export default function PaymentModal({
               ) : (
                 <>
                   <CheckCircle2 className="w-4 h-4" />
-                  <span>{`Pay $${displayAmount}`}</span>
+                  <span>{submitLabel}</span>
                 </>
               )}
             </button>
