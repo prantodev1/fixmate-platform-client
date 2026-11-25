@@ -604,10 +604,12 @@ export default function CustomerMyBookingsPage() {
     setPaymentError("");
   };
 
-  const handleCardPayment = async (card) => {
+  const handlePayment = async (payment) => {
     if (!paymentBooking) return;
 
     const id = paymentBooking._id || paymentBooking.id;
+    const method = payment?.method || "card";
+    const isMobilePayment = method === "bkash" || method === "nagad";
     const amount = Number(
       paymentBooking.paidAmount ||
         paymentBooking.finalAmount ||
@@ -627,21 +629,33 @@ export default function CustomerMyBookingsPage() {
         localStorage.getItem("accessToken") ||
         "";
 
+      const payload = {
+        bookingId: id,
+        amount,
+        paymentMethod: method,
+      };
+
+      if (method === "card") {
+        Object.assign(payload, {
+          cardBrand: payment?.brand || "Card",
+          cardLast4: payment?.last4 || "",
+          cardHolder: payment?.holder || "",
+          cardExpiry: payment?.expiry || "",
+        });
+      } else if (isMobilePayment) {
+        Object.assign(payload, {
+          mobileNumber: payment?.mobileNumber || "",
+          transactionId: payment?.transactionId || "",
+        });
+      }
+
       const res = await fetch(`${apiUrl}/api/bookings/${id}/pay`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
-        body: JSON.stringify({
-          bookingId: id,
-          amount,
-          paymentMethod: "card",
-          cardBrand: card?.brand || "Card",
-          cardLast4: card?.last4 || "",
-          cardHolder: card?.holder || "",
-          cardExpiry: card?.expiry || "",
-        }),
+        body: JSON.stringify(payload),
       });
 
       const data = await res.json().catch(() => ({}));
@@ -662,9 +676,15 @@ export default function CustomerMyBookingsPage() {
             ...item,
             ...updatedBooking,
             paymentStatus: "paid",
-            paymentMethod: updatedBooking.paymentMethod || "card",
-            cardBrand: updatedBooking.cardBrand || card?.brand || "Card",
-            cardLast4: updatedBooking.cardLast4 || card?.last4 || "",
+            paymentMethod: updatedBooking.paymentMethod || method,
+            cardBrand:
+              method === "card"
+                ? updatedBooking.cardBrand || payment?.brand || "Card"
+                : item.cardBrand || "",
+            cardLast4:
+              method === "card"
+                ? updatedBooking.cardLast4 || payment?.last4 || ""
+                : item.cardLast4 || "",
             paidAmount: updatedBooking.paidAmount ?? amount,
             transactionId:
               updatedBooking.transactionId || item.transactionId || "",
@@ -1147,7 +1167,7 @@ export default function CustomerMyBookingsPage() {
           loading={isPaying}
           error={paymentError}
           onClose={closePaymentModal}
-          onPay={handleCardPayment}
+          onPay={handlePayment}
         />
       )}
 
