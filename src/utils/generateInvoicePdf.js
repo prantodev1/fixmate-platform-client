@@ -60,6 +60,10 @@ function resolvePaidAmount(booking = {}) {
 function resolveTransactionId(booking = {}) {
   if (booking?.transactionId) return String(booking.transactionId);
   if (booking?.paymentId) return String(booking.paymentId);
+  const method = String(booking?.paymentMethod || booking?.method || "")
+    .toLowerCase()
+    .trim();
+  if (method === "cod" || method === "cash") return "Cash payment";
   const rawId = String(booking?._id || booking?.id || "").replace(
     /[^a-zA-Z0-9]/g,
     "",
