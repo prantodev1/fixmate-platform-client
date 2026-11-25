@@ -113,11 +113,34 @@ export function downloadPaidJobInvoice(booking) {
     "";
   const serviceMode = booking.serviceMode || booking.mode || "Home Visit";
 
+  const paymentMethod = String(
+    booking.paymentMethod || booking.method || "",
+  )
+    .toLowerCase()
+    .trim();
   const cardLast4 = String(booking.cardLast4 || "").trim();
   const cardBrand = String(booking.cardBrand || "").trim();
   const cardLabel = cardLast4
     ? `${cardBrand || "Card"} •••• ${cardLast4}`
     : "";
+  const mobileLabel =
+    paymentMethod === "bkash"
+      ? "bKash"
+      : paymentMethod === "nagad"
+      ? "Nagad"
+      : "";
+  const mobileNumber = String(booking.mobileNumber || "").replace(/\D/g, "");
+  const mobilePaymentLabel = mobileLabel
+    ? mobileNumber.length >= 4
+      ? `${mobileLabel} •••• ${mobileNumber.slice(-4)}`
+      : mobileLabel
+    : "";
+  const paymentMethodLabel =
+    cardLabel ||
+    mobilePaymentLabel ||
+    (paymentMethod === "cod" || paymentMethod === "cash"
+      ? "Cash on delivery"
+      : "");
 
   const serviceTitle =
     booking.serviceTitle || booking.title || "Repair Service";
@@ -354,7 +377,7 @@ export function downloadPaidJobInvoice(booking) {
         <span>Payment</span>
         <span>Paid</span>
       </div>
-      ${cardLabel ? `<div class="summary-row"><span>Card</span><span>${escapeHtml(cardLabel)}</span></div>` : ""}
+      ${paymentMethodLabel ? `<div class="summary-row"><span>Method</span><span>${escapeHtml(paymentMethodLabel)}</span></div>` : ""}
       <div class="summary-total">
         <span>Total paid</span>
         <span>${escapeHtml(formattedAmount)}</span>
