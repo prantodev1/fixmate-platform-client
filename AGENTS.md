@@ -33,8 +33,6 @@ Copy `.env.example` to `.env` (gitignored; see `.gitignore`) and fill in:
 | `NEXT_PUBLIC_API_URL` | Backend base URL, default `http://localhost:5000` |
 | `NEXT_PUBLIC_GOOGLE_CLIENT_ID` | Google OAuth client ID for sign-in/sign-up |
 | `NEXT_PUBLIC_IMGBB_API_KEY` | Image hosting key for avatar/service image uploads |
-| `NEXT_PUBLIC_BKASH_MERCHANT_NUMBER` | Merchant number shown in the bKash payment flow |
-| `NEXT_PUBLIC_NAGAD_MERCHANT_NUMBER` | Merchant number shown in the Nagad payment flow |
 
 ## Architecture
 
