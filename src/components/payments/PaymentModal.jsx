@@ -82,7 +82,7 @@ function formatAmount(value) {
   return Number.isNaN(num) ? "0.00" : num.toFixed(2);
 }
 
-export default function CardPaymentModal({
+export default function PaymentModal({
   booking,
   amount = 0,
   loading = false,
@@ -186,21 +186,21 @@ export default function CardPaymentModal({
     <div
       role="dialog"
       aria-modal="true"
-      aria-labelledby="card-payment-title"
+      aria-labelledby="payment-modal-title"
       className="fixed inset-0 z-50 bg-black/75 backdrop-blur-xs flex items-center justify-center p-4"
     >
       <div className="w-full max-w-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-6 shadow-2xl space-y-5 max-h-[92vh] overflow-y-auto">
         <div className="flex items-start justify-between gap-3 border-b border-slate-200 dark:border-slate-800 pb-4">
           <div className="flex items-start gap-3">
             <div className="w-11 h-11 rounded-2xl bg-sky-500/10 border border-sky-500/30 text-sky-600 dark:text-sky-400 flex items-center justify-center shrink-0">
-              <CreditCard className="w-5 h-5" />
+              <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
               <p className="text-xs font-semibold uppercase tracking-wider text-sky-600 dark:text-sky-400">
-                Secure card payment
+                Secure payment
               </p>
               <h2
-                id="card-payment-title"
+                id="payment-modal-title"
                 className="text-lg font-bold text-slate-900 dark:text-white mt-0.5"
               >
                 {booking?.serviceTitle || "Repair Service"}
