@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   AlertCircle,
@@ -359,9 +361,7 @@ function resolveTechnicianName(booking, lookup) {
 }
 
 export default function AdminAllBookingsPage() {
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
 
   const [bookings, setBookings] = useState([]);
   const [users, setUsers] = useState([]);

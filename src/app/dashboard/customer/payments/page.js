@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -141,9 +143,7 @@ function resolveTechnicianName(record, lookup) {
 }
 
 export default function CustomerPaymentHistoryPage() {
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
 
   const [payments, setPayments] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);

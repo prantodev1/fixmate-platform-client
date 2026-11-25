@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Users,
@@ -61,9 +63,7 @@ function getAuthToken() {
 }
 
 export default function ManageUsersPage() {
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
 
   const [users, setUsers] = useState([]);
   const [activeTab, setActiveTab] = useState("all");

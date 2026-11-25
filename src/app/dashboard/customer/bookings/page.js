@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import {
@@ -357,9 +359,7 @@ function BookingThumbnail({ src, alt }) {
 }
 
 export default function CustomerMyBookingsPage() {
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
 
   const [bookings, setBookings] = useState([]);
   const [currentUser, setCurrentUser] = useState(null);

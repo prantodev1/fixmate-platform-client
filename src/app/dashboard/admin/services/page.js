@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Wrench,
@@ -122,9 +124,7 @@ function AdminServiceThumbnail({ src, alt }) {
 }
 
 export default function ManageServicesPage() {
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
 
   const [services, setServices] = useState([]);
   const [users, setUsers] = useState([]);

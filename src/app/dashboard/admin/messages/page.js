@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useCallback, useEffect, useState } from "react";
 import {
   AlertTriangle,
@@ -34,9 +36,7 @@ export default function AdminMessagesPage() {
   const [deletingId, setDeletingId] = useState(null);
   const [pendingDeleteMsg, setPendingDeleteMsg] = useState(null);
 
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
 
   const getAuthToken = () => {
     if (typeof window === "undefined") return "";
