@@ -6,7 +6,9 @@ import {
   CreditCard,
   AlertCircle,
   ArrowRight,
+  Banknote,
   Receipt,
+  Smartphone,
 } from "lucide-react";
 import { DashboardPageSkeleton } from "@/components/ui/LoadingState";
 
@@ -33,15 +35,72 @@ function getBookingAmount(booking) {
   return Number.isNaN(num) ? 0 : num;
 }
 
+function normalizePaymentMethod(booking) {
+  return String(booking?.paymentMethod || booking?.method || "")
+    .toLowerCase()
+    .trim();
+}
+
+function isCashPayment(booking) {
+  const method = normalizePaymentMethod(booking);
+  return method === "cod" || method === "cash";
+}
+
 function getTransactionId(booking) {
   if (booking?.transactionId) return booking.transactionId;
   if (booking?.paymentId) return booking.paymentId;
+  if (isCashPayment(booking)) return "—";
   const rawId = String(booking?._id || booking?.id || "").replace(
     /[^a-zA-Z0-9]/g,
     ""
   );
   if (!rawId) return "pi_FM000000";
   return `pi_${rawId.slice(-10).toUpperCase()}`;
+}
+
+function getMethodInfo(booking) {
+  const method = normalizePaymentMethod(booking);
+  const brand = String(booking?.cardBrand || "").trim();
+  const last4 = String(booking?.cardLast4 || "").trim();
+
+  if (method === "card" || last4) {
+    return {
+      kind: "card",
+      label: last4 ? `${brand || "Card"} •••• ${last4}` : brand || "Card",
+    };
+  }
+
+  if (method === "bkash" || method === "nagad") {
+    const label = method === "bkash" ? "bKash" : "Nagad";
+    const mobile = String(booking?.mobileNumber || "").replace(/\D/g, "");
+    const suffix = mobile.length >= 4 ? mobile.slice(-4) : "";
+    return {
+      kind: "mobile",
+      label: suffix ? `${label} •••• ${suffix}` : label,
+    };
+  }
+
+  if (method === "cod" || method === "cash") {
+    return { kind: "cash", label: "Cash on delivery" };
+  }
+
+  return { kind: "unknown", label: "" };
+}
+
+function MethodIcon({ kind }) {
+  if (kind === "mobile") {
+    return (
+      <Smartphone className="w-3.5 h-3.5 text-pink-600 dark:text-pink-400 shrink-0" />
+    );
+  }
+  if (kind === "cash") {
+    return (
+      <Banknote className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400 shrink-0" />
+    );
+  }
+  return (
+    <CreditCard className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
+  );
 }
 
 function getCardLabel(booking) {
@@ -271,6 +330,7 @@ export default function CustomerPaymentHistoryPage() {
                   {payments.map((item) => {
                     const id = item._id || item.id;
                     const techName = resolveTechnicianName(item, userLookup);
+                    const methodInfo = getMethodInfo(item);
                     return (
                       <tr
                         key={id}
@@ -286,10 +346,10 @@ export default function CustomerPaymentHistoryPage() {
                           ${getBookingAmount(item)}
                         </td>
                         <td className="py-4 px-6 text-slate-700 dark:text-slate-300">
-                          {getCardLabel(item) ? (
+                          {methodInfo.label ? (
                             <span className="inline-flex items-center gap-1.5 text-xs font-medium">
-                              <CreditCard className="w-3.5 h-3.5 text-sky-600 dark:text-sky-400 shrink-0" />
-                              {getCardLabel(item)}
+                              <MethodIcon kind={methodInfo.kind} />
+                              {methodInfo.label}
                             </span>
                           ) : (
                             <span className="text-slate-400 dark:text-slate-500">
