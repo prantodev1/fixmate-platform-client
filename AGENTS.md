@@ -26,7 +26,7 @@ There is **no test suite** in this repo. Validate changes with `npm run lint` an
 
 ## Environment Variables
 
-Create `.env` (gitignored; see `.gitignore`) with:
+Copy `.env.example` to `.env` (gitignored; see `.gitignore`) and fill in:
 
 | Variable | Purpose |
 | --- | --- |
