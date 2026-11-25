@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useState, useEffect, useCallback, Suspense } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
@@ -129,21 +131,22 @@ function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const safeRedirect = getSafeRedirectPath(searchParams.get("redirect"));
+  const sessionExpired = searchParams.get("expired") === "1";
 
   const [demoAccounts, setDemoAccounts] = useState(INITIAL_DEMO_ACCOUNTS);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [navigating, setNavigating] = useState(false);
-  const [error, setError] = useState("");
+  const [error, setError] = useState(
+    sessionExpired ? "Your session expired. Please sign in again." : ""
+  );
   const [formData, setFormData] = useState({
     email: "",
     password: "",
   });
 
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
   const syncDemoUsersFromSources = useCallback(async () => {
@@ -259,6 +262,16 @@ function LoginContent() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
+    if (sessionExpired) {
+      localStorage.removeItem("token");
+      localStorage.removeItem("authToken");
+      localStorage.removeItem("accessToken");
+      localStorage.removeItem("user");
+      setNavigating(false);
+      return;
+    }
+
     try {
       const storedUser = localStorage.getItem("user");
       const token = getStoredToken();
@@ -273,7 +286,7 @@ function LoginContent() {
     } catch {
       localStorage.removeItem("user");
     }
-  }, [router, safeRedirect]);
+  }, [router, safeRedirect, sessionExpired]);
 
   const handleChange = (e) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));

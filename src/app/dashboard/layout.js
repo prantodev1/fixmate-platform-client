@@ -24,6 +24,8 @@ import {
 import { toast } from "sonner";
 import { DashboardPageSkeleton } from "@/components/ui/LoadingState";
 import { ThemeToggle } from "@/components/ThemeProvider";
+import { getApiBaseUrl } from "@/utils/api";
+import { clearAuthSession, getStoredToken } from "@/utils/auth";
 
 function normalizeRole(role = "") {
   return role.toString().toLowerCase().trim();
@@ -138,6 +140,39 @@ export default function DashboardLayout({ children }) {
     setAvatarError(false);
     setCheckingAuth(false);
   }, [pathname, router, syncUserFromStorage]);
+
+  // A cached token can be expired or revoked while the user object is still in
+  // localStorage. Verify it once so the dashboard shell does not keep showing
+  // pages whose API calls all fail with 401.
+  useEffect(() => {
+    const token = getStoredToken();
+    if (!token) return;
+
+    let active = true;
+
+    fetch(`${getApiBaseUrl()}/api/auth/me`, {
+      cache: "no-store",
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then((res) => {
+        if (!active) return;
+
+        if (res.status === 401 || res.status === 403) {
+          clearAuthSession();
+          setUser(null);
+          setCheckingAuth(false);
+          toast.error("Your session expired. Please sign in again.");
+          router.replace("/sign-in?expired=1");
+        }
+      })
+      .catch(() => {
+        // Network errors should not sign the user out.
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
 
   useEffect(() => {
     const handleProfileOrAuthSync = () => {
