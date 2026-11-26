@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import {
@@ -14,9 +16,7 @@ import {
 } from "lucide-react";
 import { DashboardPageSkeleton } from "@/components/ui/LoadingState";
 
-const API_URL = (
-  process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-).replace(/\/+$/, "");
+const API_URL = getApiBaseUrl();
 
 function getBookingAmount(booking) {
   const raw =
@@ -134,21 +134,26 @@ function resolveName(
   return defaultLabel;
 }
 
-async function fetchJsonWithTimeout(url, headers, timeoutMs = 4000) {
+async function fetchJsonWithTimeout(url, headers, timeoutMs = 15000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const res = await fetch(url, {
       cache: "no-store",
-      credentials: "include",
       headers,
       signal: controller.signal,
     });
     const json = await res.json().catch(() => ({}));
     return { ok: res.ok, status: res.status, json };
   } catch (err) {
-    return { ok: false, status: 0, json: {}, error: err };
+    return {
+      ok: false,
+      status: 0,
+      json: {},
+      error: err,
+      timedOut: err?.name === "AbortError",
+    };
   } finally {
     clearTimeout(timer);
   }
