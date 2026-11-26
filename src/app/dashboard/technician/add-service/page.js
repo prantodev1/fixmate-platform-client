@@ -1,5 +1,8 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+import { compressImageToDataUrl } from "@/utils/image";
+
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -97,9 +100,7 @@ function syncUserPlanToStorage(updatedUser) {
 
 export default function AddServicePage() {
   const router = useRouter();
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
   const imgbbKey = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
   const redirectTimerRef = useRef(null);
 
@@ -371,15 +372,26 @@ export default function AddServicePage() {
     const localPreviewUrl = URL.createObjectURL(file);
     setImagePreview(localPreviewUrl);
 
+    const applyCompressedImage = async () => {
+      const compressed = await compressImageToDataUrl(file, {
+        maxWidth: 1024,
+        quality: 0.8,
+      });
+      setFormData((prev) => ({ ...prev, image: compressed }));
+    };
+
     if (!imgbbKey) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setFormData((prev) => ({
-          ...prev,
-          image: typeof reader.result === "string" ? reader.result : "",
-        }));
-      };
-      reader.readAsDataURL(file);
+      setUploadingImage(true);
+      try {
+        await applyCompressedImage();
+      } catch (err) {
+        const msg =
+          err?.message || "Could not process the selected image.";
+        setFeedback({ type: "error", message: msg });
+        toast.error(msg);
+      } finally {
+        setUploadingImage(false);
+      }
       return;
     }
 
@@ -397,21 +409,17 @@ export default function AddServicePage() {
       if (res.ok && data?.success && data?.data?.display_url) {
         setFormData((prev) => ({ ...prev, image: data.data.display_url }));
       } else {
-        const msg =
-          data?.error?.message || "Image upload failed. Please try again.";
-        setFeedback({
-          type: "error",
-          message: msg,
-        });
-        toast.error(msg);
+        // Fall back to a compressed inline image instead of losing the file.
+        await applyCompressedImage();
       }
     } catch {
-      const msg = "Network error while uploading image.";
-      setFeedback({
-        type: "error",
-        message: msg,
-      });
-      toast.error(msg);
+      try {
+        await applyCompressedImage();
+      } catch {
+        const msg = "Could not upload or process the selected image.";
+        setFeedback({ type: "error", message: msg });
+        toast.error(msg);
+      }
     } finally {
       setUploadingImage(false);
     }

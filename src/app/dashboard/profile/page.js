@@ -1,5 +1,8 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+import { compressImageToDataUrl as compressImageFile } from "@/utils/image";
+
 import { useEffect, useState } from "react";
 import {
   Upload,
@@ -43,9 +46,7 @@ function extractUpdatedUser(responseData) {
 }
 
 export default function UpdateProfilePage() {
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
   const imgbbKey = process.env.NEXT_PUBLIC_IMGBB_API_KEY;
 
   const [formData, setFormData] = useState({
@@ -178,26 +179,8 @@ export default function UpdateProfilePage() {
     };
   }, [photoPreview]);
 
-  const compressImageToDataUrl = (file, maxWidth = 512, quality = 0.75) =>
-    new Promise((resolve, reject) => {
-      const img = new Image();
-      const objectUrl = URL.createObjectURL(file);
-      img.onload = () => {
-        URL.revokeObjectURL(objectUrl);
-        const scale = Math.min(1, maxWidth / img.width);
-        const canvas = document.createElement("canvas");
-        canvas.width = Math.round(img.width * scale);
-        canvas.height = Math.round(img.height * scale);
-        const ctx = canvas.getContext("2d");
-        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL("image/jpeg", quality));
-      };
-      img.onerror = (err) => {
-        URL.revokeObjectURL(objectUrl);
-        reject(err);
-      };
-      img.src = objectUrl;
-    });
+  const compressImageToDataUrl = (file) =>
+    compressImageFile(file, { maxWidth: 512, quality: 0.75 });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
