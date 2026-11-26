@@ -1,5 +1,7 @@
 "use client";
 
+import { getApiBaseUrl } from "@/utils/api";
+
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
@@ -350,9 +352,7 @@ export default function ServiceDetailsPage() {
   const router = useRouter();
   const rawId = params?.id;
   const serviceId = rawId ? String(rawId).trim() : "";
-  const apiUrl = (
-    process.env.NEXT_PUBLIC_API_URL || "http://localhost:5000"
-  ).replace(/\/+$/, "");
+  const apiUrl = getApiBaseUrl();
 
   const [service, setService] = useState(null);
   const [technician, setTechnician] = useState(null);
@@ -724,38 +724,38 @@ export default function ServiceDetailsPage() {
     } catch {
       setSessionUser(null);
     }
-    fetchServiceDetails({ silent: true });
-  }, [fetchServiceDetails]);
+  }, []);
 
   useEffect(() => {
-    syncSession();
+    const handleSessionChange = () => {
+      syncSession();
+      fetchServiceDetails({ silent: true });
+    };
+
     const handleFocusOrVisible = () => {
-      if (
-        document.visibilityState === "visible" ||
-        document.hasFocus()
-      ) {
+      if (document.visibilityState === "visible" || document.hasFocus()) {
         fetchServiceDetails({ silent: true });
       }
     };
 
-    window.addEventListener("auth-change", syncSession);
-    window.addEventListener("storage", syncSession);
+    // Read the cached session and load the page once on mount.
+    syncSession();
+    fetchServiceDetails();
+
+    window.addEventListener("auth-change", handleSessionChange);
+    window.addEventListener("storage", handleSessionChange);
     window.addEventListener("focus", handleFocusOrVisible);
     window.addEventListener("pageshow", handleFocusOrVisible);
     document.addEventListener("visibilitychange", handleFocusOrVisible);
 
     return () => {
-      window.removeEventListener("auth-change", syncSession);
-      window.removeEventListener("storage", syncSession);
+      window.removeEventListener("auth-change", handleSessionChange);
+      window.removeEventListener("storage", handleSessionChange);
       window.removeEventListener("focus", handleFocusOrVisible);
       window.removeEventListener("pageshow", handleFocusOrVisible);
       document.removeEventListener("visibilitychange", handleFocusOrVisible);
     };
   }, [syncSession, fetchServiceDetails]);
-
-  useEffect(() => {
-    fetchServiceDetails();
-  }, [fetchServiceDetails]);
 
   const role = (sessionUser?.role || "").toLowerCase();
   const isLoggedIn = Boolean(
